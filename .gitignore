@@ -127,3 +127,14 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+tmp/
+.idea/
+*.xlsx
+dataset/
+bert_model/
+*.weight
+*.ckpt.*
+embedding/
+output/
+.DS_Store
+draft.py
