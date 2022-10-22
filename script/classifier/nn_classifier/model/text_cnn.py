@@ -39,7 +39,7 @@ class Config(DataConfig):
         self.n_vocab = len(self.word2index)+1  # 词表大小，在运行时赋值
         self.num_epochs = 20  # epoch数
         self.batch_size = 128  # mini-batch大小
-        self.pad_size = 32  # 每句话处理成的长度(短填长切)
+        self.pad_size = 256  # 每句话处理成的长度(短填长切)
         self.learning_rate = 1e-3  # 学习率
         self.filter_sizes = (2, 3, 4)  # 卷积核尺寸
         self.num_filters = 256

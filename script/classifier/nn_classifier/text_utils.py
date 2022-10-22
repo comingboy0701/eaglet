@@ -1,57 +1,77 @@
 import torch
 from torch.utils.data import Dataset
 from typing import List
-from script import Sentence, Label
 
 UNK, PAD = '<UNK>', '<PAD>'  # 未知字，padding符号
 
 
 class BertDataset(Dataset):
-    def __init__(self, config, sentences: List[Sentence], labels: List[Label]):
+    def __init__(self, config, data: List[dict]):
         self.config = config
-        self.sentences = sentences
-        self.labels = labels
+        self.data = data
 
     def __len__(self):
-        return len(self.sentences)
+        return len(self.data)
 
     def __getitem__(self, index):
-        sentence, label = self.sentences[index], self.labels[index]
+        return self.data[index]
 
-        tokenizer = self.config.tokenizer(sentence.get_text(), max_length=self.config.pad_size,
-                                          truncation=True, return_tensors="pt", padding='max_length')
-        x = tokenizer["input_ids"][0]
-        mask = tokenizer["attention_mask"][0]
-        seq_len = torch.sum(mask)
-        y = torch.tensor(int(label.get_label()), dtype=torch.long)
-        return (x, seq_len, mask), y
+    def collate_fn(self, batch):
+        sentences = []
+        y = []
+        for line in batch:
+            text_a, label = line["text_a"], line["label"]
+            if "text_b" in line:
+                text_b = line["text_b"]
+                sentences.append([text_a, text_b])
+            else:
+                sentences.append(text_a)
+
+            y.append(self.config.label2id.get(label, 0))
+        x = self.config.tokenizer(sentences, max_length=self.config.pad_size, truncation=True, return_tensors="pt",
+                                  padding=True)
+        y = torch.tensor(y, dtype=torch.long)
+        return (x["token_id"], x[""], ["mask"]), y
 
 
 class TextCnnDataset(Dataset):
-    def __init__(self, config, sentences: List[Sentence], labels: List[Label]):
+    def __init__(self, config, data: List[dict]):
         self.config = config
-        self.sentences = sentences
-        self.labels = labels
+        self.data = data
 
     def __len__(self):
-        return len(self.sentences)
+        return len(self.data)
 
     def __getitem__(self, index):
-        sentence, label = self.sentences[index], self.labels[index]
-        y = torch.tensor(int(label.get_label()), dtype=torch.long)
+        return self.data[index]
 
-        sentence = sentence.get_text()
-        tokens = [self.config.word2index.get(word, self.config.word2index[UNK]) for word in sentence]
-        seq_len = torch.tensor(min(self.config.pad_size, len(tokens)), dtype=torch.long)
+    def collate_fn(self, batch):
+        tokens, seq_len, y, seq_len = [], [], [], []
+        for line in batch:
+            text_a, label = line["text_a"], line["label"]
+            text_token = [self.config.word2index.get(word, self.config.word2index[UNK]) for word in text_a]
+            if "text_b" in line:
+                text_b = line["text_b"]
+                text_b_token = [self.config.word2index.get(word, self.config.word2index[UNK]) for word in text_b]
+                text_token = text_token+[self.config.word2index[PAD]] + text_b_token
+            tokens.append(text_token)
+            seq_len.append(len(tokens))
+            y.append(self.config.label2id.get(label, 0))
 
-        tokens = self.pad(tokens)
-        feature = torch.tensor(tokens, dtype=torch.long)
+        seq_len = [min(i, self.config.pad_size) for i in seq_len]
+        max_len = max(seq_len)
 
+        tokens_pad = []
+        for tokens in tokens:
+            if len(tokens) >= max_len:
+                tokens = tokens[:max_len]
+            else:
+                tokens = tokens + [self.config.word2index[PAD]] * (max_len - len(tokens))
+            tokens_pad.append(tokens)
+
+        feature = torch.tensor(tokens_pad, dtype=torch.long)
+        seq_len = torch.tensor(seq_len, dtype=torch.long)
+        y = torch.tensor(y, dtype=torch.long)
         return (feature, seq_len), y
 
-    def pad(self, tokens):
-        if len(tokens) >= self.config.pad_size:
-            return tokens[:self.config.pad_size]
-        else:
-            return tokens + [self.config.word2index[PAD]] * (self.config.pad_size - len(tokens))
 

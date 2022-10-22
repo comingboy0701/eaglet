@@ -1,7 +1,8 @@
 import multiprocessing as P
 import os
 from script.utils.file import load_json
-from script import get_logger, limit_gpu_memory
+from script import get_logger
+# from script import limit_gpu_memory
 import torch
 from setting import ROOT_PATH
 
@@ -36,9 +37,9 @@ class DataConfig(object):
         self.emb_path = os.path.join(ROOT_PATH, "embedding", "char-SougouNews.vec")
         self.vocab_path = os.path.join(cache_dir, 'vocab.json')  # 自动生成word2id的json文件
         self.device = torch.device('cuda:{}'.format(1) if torch.cuda.is_available() else 'cpu')  # 设备
-        self.cpu_count = min(P.cpu_count(), 16)
+        self.cpu_count = min(P.cpu_count(), 0)
         self.toy = False
-        self.memory_limit = 1024 * 8
-        self.gpu_no = 1
-        limit_gpu_memory(self.memory_limit, self.gpu_no)
+        # self.memory_limit = 1024 * 8
+        # self.gpu_no = 1
+        # limit_gpu_memory(self.memory_limit, self.gpu_no)
 

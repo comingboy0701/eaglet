@@ -5,6 +5,8 @@ import time
 from sklearn import metrics
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
+
+from script.utils import load_line_json
 from script.utils.utils import get_time_dif
 from script import Sentence, Label
 from tqdm import tqdm
@@ -57,11 +59,12 @@ class Classifier:
         return Label.load(path)
 
     def _covert_sentence_label(self, path: str, toy: bool = False):
-        sentences, labels = self._sentence_load(path), self._label_load(path)
+        x = load_line_json(path)
         if toy:
-            _, sentences, _, labels = train_test_split(sentences, labels, test_size=0.1)
-        ds_data = self.modelDataset(self, sentences, labels)
-        data_iter = DataLoader(ds_data, batch_size=self.batch_size, shuffle=self.random, num_workers=self.cpu_count)
+            _, x = train_test_split(x, test_size=0.001)
+        ds_data = self.modelDataset(self, x)
+        data_iter = DataLoader(ds_data, batch_size=self.batch_size, shuffle=self.random,
+                               num_workers=self.cpu_count, collate_fn=ds_data.collate_fn)
         return data_iter
 
     def train_model(self, ) -> None:
@@ -86,7 +89,7 @@ class Classifier:
                 # loss = F.cross_entropy(outputs, labels)
                 # loss.backward()
                 # self.optimizer.step()
-                if total_batch % 100 == 0:
+                if total_batch % 10 == 0:
                     # 每多少轮输出在训练集和验证集上的效果
                     self.model.eval()
                     true = labels.data.cpu()
@@ -101,7 +104,8 @@ class Classifier:
                     else:
                         improve = ''
                     time_dif = get_time_dif(start_time)
-                    msg = 'Iter: {0:>6},  Train Loss: {1:>5.2},  Train Acc: {2:>6.2%},  Val Loss: {3:>5.2},  Val Acc: {4:>6.2%},  Time: {5} {6}'
+                    msg = 'Iter: {0:>6},  Train Loss: {1:>5.6},  Train Acc: {2:>6.6%}, ' \
+                          ' Val Loss: {3:>5.6},  Val Acc: {4:>6.6%},  Time: {5} {6}'
                     self.logger.info(
                         msg.format(total_batch, loss.item(), train_acc, dev_loss, dev_acc, time_dif, improve))
                     self.model.train()
@@ -120,7 +124,7 @@ class Classifier:
         start_time = time.time()
         test_iter = self._covert_sentence_label(self.test_path, toy=False)
         test_acc, test_loss, test_report, test_confusion = self._evaluate(self.model, test_iter, test=True)
-        msg = 'Test Loss: {0:>5.2},  Test Acc: {1:>6.2%}'
+        msg = 'Test Loss: {0:>5.6},  Test Acc: {1:>6.6%}'
         self.logger.info(msg.format(test_loss, test_acc))
         self.logger.info("Precision, Recall and F1-Score...")
         self.logger.info(test_report)
@@ -189,13 +193,16 @@ class Classifier:
         """传入参数
         # [{
         #     "unique_id": "1234",
-        #     "sentence": '开开心心每一天',
+        #     "text_a": '开开心心',
+        #     "text_b": '每一天',
         # }]
         """
         self.logger.info("预测数据: {}".format(sentences_list))
-        sentences = [Sentence(i["sentence"]) for i in sentences_list]
-        labels = [Label("0") for _ in sentences_list]
-        ds_data = self.modelDataset(self, sentences, labels)
+        data_list = []
+        for i in sentences_list:
+            i["label"] = '0'
+            data_list.append(i)
+        ds_data = self.modelDataset(self, data_list)
         data_iter = DataLoader(ds_data, batch_size=self.batch_size, shuffle=False, num_workers=self.cpu_count)
         pred_labels, pred_scores = self._evaluate(self.model, data_iter, predict=True)
         for i, j, k in zip(sentences_list, pred_labels, pred_scores):

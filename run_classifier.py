@@ -26,7 +26,7 @@ if __name__ == '__main__':
     if model_name.startswith("nn"):
         seed_everything(666)
 
-    dataset = 'dataset/多分类任务/THUCNews'  # 数据集
+    dataset = 'dataset/多分类任务/lizibo'  # 数据集
 
     kwargs = {
         "dataset": dataset,
