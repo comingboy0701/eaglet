@@ -189,15 +189,18 @@ class Classifier:
         """传入参数
         # [{
         #     "unique_id": "1234",
-        #     "sentence": '开开心心每一天',
+        #     "text_a": '开开心心',
+        #     "text_b": '每一天',
         # }]
         """
         self.logger.info("预测数据: {}".format(sentences_list))
-        sentences = [Sentence(i["sentence"]) for i in sentences_list]
-        labels = [Label("0") for _ in sentences_list]
-        ds_data = self.modelDataset(self, sentences, labels)
+        data_list = []
+        for i in sentences_list:
+            i["label"] = '0'
+            data_list.append(i)
+        ds_data = self.modelDataset(self, data_list)
         data_iter = DataLoader(ds_data, batch_size=self.batch_size, shuffle=False, num_workers=self.cpu_count)
         pred_labels, pred_scores = self._evaluate(self.model, data_iter, predict=True)
         for i, j, k in zip(sentences_list, pred_labels, pred_scores):
             i.update({"pred_label_id": str(j[0]), 'pred_label': self.id2label[j[0]], "pred_score": str(round(k[0], 4))})
-        return sentences_list
+        return

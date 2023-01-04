@@ -7,24 +7,33 @@ UNK, PAD = '<UNK>', '<PAD>'  # 未知字，padding符号
 
 
 class BertDataset(Dataset):
-    def __init__(self, config, sentences: List[Sentence], labels: List[Label]):
+    def __init__(self, config, data: List[dict]):
         self.config = config
-        self.sentences = sentences
-        self.labels = labels
+        self.data = data
 
     def __len__(self):
-        return len(self.sentences)
+        return len(self.data)
 
     def __getitem__(self, index):
-        sentence, label = self.sentences[index], self.labels[index]
+        return self.data[index]
 
-        tokenizer = self.config.tokenizer(sentence.get_text(), max_length=self.config.pad_size,
-                                          truncation=True, return_tensors="pt", padding='max_length')
-        x = tokenizer["input_ids"][0]
-        mask = tokenizer["attention_mask"][0]
-        seq_len = torch.sum(mask)
-        y = torch.tensor(int(label.get_label()), dtype=torch.long)
-        return (x, seq_len, mask), y
+    def collate_fn(self, batch):
+        sentences = []
+        y = []
+        for line in batch:
+            text_a, label = line["text"], line["label"]
+            if "text_b" in line:
+                text_b = line["text_b"]
+                sentences.append([text_a, text_b])
+            else:
+                sentences.append(text_a)
+
+            y.append(self.config.label2id.get(label, 0))
+        x = self.config.tokenizer(sentences, max_length=self.config.pad_size, truncation=True,
+                                  return_tensors="pt", padding=True)
+        y = torch.tensor(y, dtype=torch.long)
+
+        return (x["input_ids"], x["token_type_ids"], x["attention_mask"]), y
 
 
 class TextCnnDataset(Dataset):

@@ -38,6 +38,7 @@
 | robert  |  | 
 | robert+fgm  |  | 
 | robert+pgd  |  | 
+| electrac_small+base  | 93.68%|0.9368|0.9368|0.9367|-|7|0.21|early stop|
  
  - 备注：训练时间可信度不高，由于跑model的时候可能有其他模型在run
 
