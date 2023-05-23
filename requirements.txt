@@ -8,7 +8,7 @@ line_profiler==3.4.0
 numpy==1.19.2
 pandas==1.1.5
 ptvsd==4.3.2
-requests==2.26.0
+requests==2.31.0
 scikit_learn==1.0.2
 six==1.15.0
 tensorflow==1.15.0
