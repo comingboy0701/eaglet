@@ -2,7 +2,7 @@ apex==0.9.10dev
 bert4keras==0.10.9
 boto3==1.21.28
 botocore==1.24.28
-Flask==2.0.1
+Flask==2.2.5
 Keras==2.3.1
 line_profiler==3.4.0
 numpy==1.19.2
